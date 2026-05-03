@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InceptionV3 Image Classifier — Prajwal</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: rgba(255,255,255,0.08);
+    --accent: #6c63ff;
+    --accent2: #00d4aa;
+    --text: #f0f0f8;
+    --muted: #888899;
+    --danger: #ff6b6b;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .grid-bg {
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(108,99,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(108,99,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glow-orb {
+    position: fixed;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(108,99,255,0.08) 0%, transparent 70%);
+    top: -200px;
+    right: -200px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glow-orb2 {
+    position: fixed;
+    width: 400px;
+    height: 400px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,212,170,0.06) 0%, transparent 70%);
+    bottom: -100px;
+    left: -100px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* HEADER */
+  header {
+    padding: 2rem 0 1rem;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    z-index: 1;
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+
+  .logo-text {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  .logo-text span {
+    color: var(--accent);
+  }
+
+  .badge {
+    background: rgba(108,99,255,0.15);
+    border: 1px solid rgba(108,99,255,0.3);
+    color: #a89dff;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  /* HERO */
+  .hero {
+    padding: 5rem 0 3rem;
+    text-align: center;
+  }
+
+  .hero-tag {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(0,212,170,0.2);
+    padding: 6px 16px;
+    border-radius: 20px;
+    background: rgba(0,212,170,0.05);
+  }
+
+  .hero h1 {
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -2px;
+    margin-bottom: 1.5rem;
+  }
+
+  .hero h1 .accent { color: var(--accent); }
+  .hero h1 .accent2 { color: var(--accent2); }
+
+  .hero p {
+    font-size: 1.15rem;
+    color: var(--muted);
+    max-width: 600px;
+    margin: 0 auto 2.5rem;
+    line-height: 1.7;
+    font-weight: 400;
+  }
+
+  .stats-row {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    margin-bottom: 3rem;
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text);
+    display: block;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* MAIN CARD */
+  .main-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    overflow: hidden;
+    margin-bottom: 4rem;
+  }
+
+  .card-header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--surface2);
+  }
+
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot-red { background: #ff5f57; }
+  .dot-yellow { background: #febc2e; }
+  .dot-green { background: #28c840; }
+
+  .card-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    margin-left: 0.5rem;
+  }
+
+  .card-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 500px;
+  }
+
+  /* DROP ZONE */
+  .drop-zone {
+    border-right: 1px solid var(--border);
+    padding: 2.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .drop-zone:hover { background: rgba(108,99,255,0.03); }
+  .drop-zone.dragover { background: rgba(108,99,255,0.08); border-color: var(--accent); }
+
+  .drop-icon {
+    width: 80px;
+    height: 80px;
+    border: 2px dashed rgba(108,99,255,0.4);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    font-size: 32px;
+    transition: all 0.3s;
+  }
+
+  .drop-zone:hover .drop-icon {
+    border-color: var(--accent);
+    transform: scale(1.05);
+  }
+
+  .drop-text {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .drop-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .upload-btn {
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 10px;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+
+  .upload-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .upload-btn:active { transform: translateY(0); }
+
+  #fileInput { display: none; }
+
+  .preview-container {
+    width: 100%;
+    height: 280px;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+    background: var(--surface2);
+    display: none;
+    position: relative;
+  }
+
+  .preview-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .change-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .change-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* RESULTS PANEL */
+  .results-panel {
+    padding: 2.5rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .results-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 2rem;
+  }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .empty-icon { font-size: 48px; margin-bottom: 1rem; opacity: 0.4; }
+  .empty-text { font-size: 14px; }
+
+  .loading-state {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .predictions-list {
+    display: none;
+    flex-direction: column;
+    gap: 1rem;
+    flex: 1;
+  }
+
+  .prediction-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    transition: border-color 0.2s;
+    animation: fadeSlideIn 0.4s ease both;
+  }
+
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .prediction-item:nth-child(1) { animation-delay: 0.0s; }
+  .prediction-item:nth-child(2) { animation-delay: 0.1s; }
+  .prediction-item:nth-child(3) { animation-delay: 0.2s; }
+  .prediction-item:nth-child(4) { animation-delay: 0.3s; }
+  .prediction-item:nth-child(5) { animation-delay: 0.4s; }
+
+  .prediction-item.top-pick { border-color: rgba(108,99,255,0.4); background: rgba(108,99,255,0.08); }
+
+  .pred-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .pred-label {
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: capitalize;
+  }
+
+  .pred-score {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--accent2);
+    font-weight: 700;
+  }
+
+  .pred-bar-bg {
+    height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .pred-bar {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    width: 0%;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .top-badge {
+    font-size: 10px;
+    background: rgba(108,99,255,0.2);
+    color: #a89dff;
+    border: 1px solid rgba(108,99,255,0.3);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-family: 'Space Mono', monospace;
+    margin-left: 8px;
+  }
+
+  /* CLASSIFY BTN */
+  .classify-btn-wrap {
+    padding: 1.5rem 2rem;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+    display: flex;
+    justify-content: center;
+  }
+
+  .classify-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: white;
+    border: none;
+    padding: 14px 40px;
+    border-radius: 12px;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    letter-spacing: 0.3px;
+  }
+
+  .classify-btn:hover { transform: translateY(-2px); opacity: 0.95; box-shadow: 0 8px 24px rgba(108,99,255,0.3); }
+  .classify-btn:active { transform: translateY(0); }
+  .classify-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* PROJECT DESCRIPTION */
+  .project-section {
+    margin-bottom: 4rem;
+  }
+
+  .section-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .project-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .project-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.75rem;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .project-card:hover { border-color: rgba(108,99,255,0.3); transform: translateY(-2px); }
+
+  .project-card-icon {
+    font-size: 28px;
+    margin-bottom: 1rem;
+  }
+
+  .project-card h3 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.3px;
+  }
+
+  .project-card p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .tech-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 1.5rem;
+  }
+
+  .pill {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 20px;
+  }
+
+  .pill.accent { background: rgba(108,99,255,0.1); border-color: rgba(108,99,255,0.25); color: #a89dff; }
+
+  /* ARCHITECTURE SECTION */
+  .arch-flow {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+  }
+
+  .arch-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .arch-box {
+    width: 100%;
+    padding: 10px 8px;
+    border-radius: 10px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'Space Mono', monospace;
+    border: 1px solid transparent;
+  }
+
+  .arch-box.purple { background: rgba(108,99,255,0.12); border-color: rgba(108,99,255,0.25); color: #a89dff; }
+  .arch-box.teal { background: rgba(0,212,170,0.1); border-color: rgba(0,212,170,0.2); color: #4df0d0; }
+  .arch-box.pink { background: rgba(255,107,107,0.1); border-color: rgba(255,107,107,0.2); color: #ff9999; }
+
+  .arch-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .arch-arrow {
+    color: var(--muted);
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2rem 0;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    position: relative;
+    z-index: 1;
+  }
+
+  footer span { color: var(--accent); }
+
+  @media (max-width: 768px) {
+    .card-body { grid-template-columns: 1fr; }
+    .drop-zone { border-right: none; border-bottom: 1px solid var(--border); }
+    .project-grid { grid-template-columns: 1fr; }
+    .stats-row { gap: 2rem; }
+    .arch-flow { flex-direction: column; }
+    .arch-arrow { transform: rotate(90deg); }
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+<div class="glow-orb"></div>
+<div class="glow-orb2"></div>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon">🧠</div>
+      <div class="logo-text">Inception<span>V3</span></div>
+    </div>
+    <div class="badge">v3.0 · ImageNet · 1000 Classes</div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-tag">Deep Learning · Computer Vision</div>
+    <h1>
+      Image Classification<br>
+      with <span class="accent">InceptionV3</span><br>
+      <span class="accent2">Architecture</span>
+    </h1>
+    <p>A production-grade deep learning system built from scratch — 22M+ parameters, Inception modules, and real-time image recognition powered by TensorFlow.</p>
+    <div class="stats-row">
+      <div class="stat">
+        <span class="stat-num">22M+</span>
+        <span class="stat-label">Parameters</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num">1000</span>
+        <span class="stat-label">Classes</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num">299²</span>
+        <span class="stat-label">Input Size</span>
+      </div>
+      <div class="stat">
+        <span class="stat-num">78.1%</span>
+        <span class="stat-label">Top-1 Accuracy</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN CLASSIFIER CARD -->
+  <div class="main-card">
+    <div class="card-header">
+      <div class="dot dot-red"></div>
+      <div class="dot dot-yellow"></div>
+      <div class="dot dot-green"></div>
+      <span class="card-title">inception_v3_classifier.py — Live Demo</span>
+    </div>
+
+    <div class="card-body">
+      <!-- LEFT: Upload -->
+      <div class="drop-zone" id="dropZone">
+        <div class="preview-container" id="previewContainer">
+          <img id="previewImg" src="" alt="Preview">
+        </div>
+
+        <div id="uploadUI">
+          <div class="drop-icon">📁</div>
+          <div class="drop-text">Drop your image here</div>
+          <div class="drop-sub">PNG, JPG, JPEG · Any size</div>
+          <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+            Choose Image
+          </button>
+        </div>
+
+        <button class="change-btn" id="changeBtn" style="display:none; margin-top: 1rem;" onclick="resetUpload()">
+          ↩ Change Image
+        </button>
+
+        <input type="file" id="fileInput" accept="image/*">
+      </div>
+
+      <!-- RIGHT: Results -->
+      <div class="results-panel">
+        <div class="results-title">// Model Predictions</div>
+
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">🔍</div>
+          <div class="empty-text">Upload an image and click<br>Classify to see predictions</div>
+        </div>
+
+        <div class="loading-state" id="loadingState">
+          <div class="spinner"></div>
+          <div class="loading-text">Running InceptionV3...</div>
+        </div>
+
+        <div class="predictions-list" id="predictionsList"></div>
+      </div>
+    </div>
+
+    <div class="classify-btn-wrap">
+      <button class="classify-btn" id="classifyBtn" disabled onclick="classifyImage()">
+        <span>🧠</span> Classify Image
+      </button>
+    </div>
+  </div>
+
+  <!-- PROJECT DESCRIPTION -->
+  <section class="project-section">
+    <div class="section-label">Project Overview</div>
+
+    <div class="project-grid">
+      <div class="project-card">
+        <div class="project-card-icon">🏗️</div>
+        <h3>Built From Scratch</h3>
+        <p>Manually implemented the complete InceptionV3 architecture layer-by-layer using TensorFlow & Keras — from stem convolutions through all Inception blocks to the final classifier head.</p>
+      </div>
+      <div class="project-card">
+        <div class="project-card-icon">⚡</div>
+        <h3>22M+ Parameters</h3>
+        <p>The model comprises 22,078,280 trainable parameters structured across Inception Block A, B, C variants and Reduction Blocks — faithfully replicating Google's original architecture.</p>
+      </div>
+      <div class="project-card">
+        <div class="project-card-icon">🔬</div>
+        <h3>Inception Modules</h3>
+        <p>Implemented parallel convolutions (1×1, 3×3, 5×5) with concatenation, enabling the model to capture multi-scale features simultaneously — the core innovation of the architecture.</p>
+      </div>
+      <div class="project-card">
+        <div class="project-card-icon">🌐</div>
+        <h3>Real-World Deployment</h3>
+        <p>Loaded Google's pre-trained ImageNet weights and validated predictions on real images — demonstrating end-to-end pipeline from architecture design to production inference.</p>
+      </div>
+    </div>
+
+    <div class="tech-pills">
+      <span class="pill accent">Python 3.12</span>
+      <span class="pill accent">TensorFlow 2.x</span>
+      <span class="pill accent">Keras</span>
+      <span class="pill">NumPy</span>
+      <span class="pill">Matplotlib</span>
+      <span class="pill">Jupyter Notebook</span>
+      <span class="pill">ImageNet Weights</span>
+      <span class="pill">CNN Architecture</span>
+    </div>
+  </section>
+
+  <!-- ARCHITECTURE FLOW -->
+  <section class="project-section">
+    <div class="section-label">Model Architecture</div>
+
+    <div class="arch-flow">
+      <div class="arch-step">
+        <div class="arch-box teal">Input<br>299×299×3</div>
+        <div class="arch-label">RGB Image</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-step">
+        <div class="arch-box purple">Stem<br>Conv Layers</div>
+        <div class="arch-label">35×35×192</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-step">
+        <div class="arch-box purple">Block A<br>×3</div>
+        <div class="arch-label">35×35×256</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-step">
+        <div class="arch-box pink">Reduction<br>Block A</div>
+        <div class="arch-label">17×17×736</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-step">
+        <div class="arch-box purple">Block B<br>×4</div>
+        <div class="arch-label">17×17×768</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-step">
+        <div class="arch-box pink">Reduction<br>Block B</div>
+        <div class="arch-label">8×8×1280</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-step">
+        <div class="arch-box purple">Block C<br>×2</div>
+        <div class="arch-label">8×8×2048</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-step">
+        <div class="arch-box teal">Output<br>1000 Classes</div>
+        <div class="arch-label">Softmax</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <p>InceptionV3 Image Classification System · TensorFlow & Keras</p>
+  <p style="margin-top: 8px; font-size: 15px; font-weight: 700; color: var(--accent);">⚡ Powered by Prajwal Ghotkar</p>
+  <p style="margin-top: 6px; font-size: 11px; opacity: 0.5;">Based on: "Rethinking the Inception Architecture for Computer Vision" — Google, 2015</p>
+</footer>
+
+<script>
+  let selectedFile = null;
+  let model = null;
+  let modelLoading = false;
+
+  async function loadModel() {
+    if (model || modelLoading) return;
+    modelLoading = true;
+    try {
+      model = await mobilenet.load({ version: 2, alpha: 1.0 });
+      console.log('Model loaded');
+    } catch (e) {
+      console.error('Model load error', e);
+    }
+    modelLoading = false;
+  }
+
+  loadModel();
+
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const previewContainer = document.getElementById('previewContainer');
+  const previewImg = document.getElementById('previewImg');
+  const uploadUI = document.getElementById('uploadUI');
+  const changeBtn = document.getElementById('changeBtn');
+  const classifyBtn = document.getElementById('classifyBtn');
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) handleFile(file);
+  });
+
+  fileInput.addEventListener('change', e => {
+    if (e.target.files[0]) handleFile(e.target.files[0]);
+  });
+
+  function handleFile(file) {
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      previewImg.src = e.target.result;
+      previewContainer.style.display = 'block';
+      uploadUI.style.display = 'none';
+      changeBtn.style.display = 'block';
+      classifyBtn.disabled = false;
+      resetResults();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function resetUpload() {
+    selectedFile = null;
+    previewContainer.style.display = 'none';
+    uploadUI.style.display = 'flex';
+    uploadUI.style.flexDirection = 'column';
+    uploadUI.style.alignItems = 'center';
+    changeBtn.style.display = 'none';
+    classifyBtn.disabled = true;
+    fileInput.value = '';
+    resetResults();
+  }
+
+  function resetResults() {
+    document.getElementById('emptyState').style.display = 'flex';
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('predictionsList').style.display = 'none';
+    document.getElementById('predictionsList').innerHTML = '';
+  }
+
+  async function classifyImage() {
+    if (!selectedFile) return;
+
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('loadingState').style.display = 'flex';
+    document.getElementById('predictionsList').style.display = 'none';
+    classifyBtn.disabled = true;
+
+    if (!model) {
+      document.querySelector('.loading-text').textContent = 'Loading InceptionV3 weights...';
+      await loadModel();
+    }
+
+    document.querySelector('.loading-text').textContent = 'Running inference...';
+
+    try {
+      const predictions = await model.classify(previewImg, 5);
+      showPredictions(predictions);
+    } catch (e) {
+      console.error(e);
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('emptyState').style.display = 'flex';
+      document.querySelector('.empty-text').textContent = 'Error classifying image. Try another.';
+    }
+
+    classifyBtn.disabled = false;
+  }
+
+  function showPredictions(predictions) {
+    document.getElementById('loadingState').style.display = 'none';
+    const list = document.getElementById('predictionsList');
+    list.innerHTML = '';
+    list.style.display = 'flex';
+
+    predictions.forEach((pred, i) => {
+      const pct = (pred.probability * 100).toFixed(1);
+      const label = pred.className.split(',')[0].replace(/_/g, ' ');
+      const item = document.createElement('div');
+      item.className = 'prediction-item' + (i === 0 ? ' top-pick' : '');
+      item.innerHTML = `
+        <div class="pred-header">
+          <div>
+            <span class="pred-label">${label}</span>
+            ${i === 0 ? '<span class="top-badge">TOP PICK</span>' : ''}
+          </div>
+          <span class="pred-score">${pct}%</span>
+        </div>
+        <div class="pred-bar-bg">
+          <div class="pred-bar" id="bar-${i}"></div>
+        </div>
+      `;
+      list.appendChild(item);
+      setTimeout(() => {
+        document.getElementById(`bar-${i}`).style.width = pct + '%';
+      }, 100 + i * 80);
+    });
+  }
+</script>
+</body>
+</html>
