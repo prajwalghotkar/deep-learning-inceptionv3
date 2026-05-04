@@ -138,8 +138,4 @@ Live Demo: https://inceptionv3imageclassification.netlify.app
 
 ---
 
-## Author
-
-Prajwal Ghotkar
-
 Powered by Prajwal Ghotkar
