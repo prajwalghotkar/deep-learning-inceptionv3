@@ -1,6 +1,8 @@
 # deep-learning-inceptionv3
 https://inceptionv3imageclassification.netlify.app/
 
+https://github.com/prajwalghotkar/CNN
+
 # InceptionV3 Image Classification System — From Scratch to Deployment
 
 ## Project Overview
