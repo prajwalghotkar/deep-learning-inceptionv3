@@ -9,7 +9,7 @@ https://graphviz.gitlab.io/download/
 
 ## Project Overview
 
-This project presents a complete, end-to-end implementation of the InceptionV3 deep learning architecture, built from scratch using Python, TensorFlow, and Keras. The goal was to go beyond simply using a pre-built model — instead, every layer, every block, and every connection was manually designed and coded, replicating the original architecture described in Google's landmark 2015 research paper.
+This project presents a complete, end-to-end implementation of the InceptionV3 deep learning architecture, built from scratch using Python, TensorFlow, and Keras. The goal was to go beyond simply using a pre-built model instead, every layer, every block, and every connection was manually designed and coded, replicating the original architecture described in Google's landmark 2015 research paper.
 
 The project covers the full pipeline: architecture design, model construction, pre-trained weight loading, real-world image inference, and a live web application deployment.
 
